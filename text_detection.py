@@ -22,7 +22,7 @@ def get_arguments():
     return arguments
 
 
-def forward_passer(detector, layers, image):
+def forward_passer(detector, image, layers):
 
     print("[INFO] loading the detector...")
     net = cv2.dnn.readNet(detector)
@@ -39,25 +39,7 @@ def forward_passer(detector, layers, image):
     return scores, geometry
 
 
-if __name__ == '__main__':
-
-    args = get_arguments()
-
-    image = cv2.imread(args['image'])
-    orig_image = image.copy()
-    h, w = image.shape[:2]
-
-    new_w, new_h = args['width'], args['height']
-    ratio_w = w / new_w
-    ratio_h = h / new_h
-
-    image = cv2.resize(image, (new_w, new_h))
-    h, w = image.shape[:2]
-
-    layer_names = ['feature_fusion/Conv_7/Sigmoid',
-                   'feature_fusion/concat_3']
-
-    scores, geometry = forward_passer(detector=args['east'], layers=layer_names, image=image)
+def box_extractor(scores, geometry, min_confidence):
 
     num_rows, num_cols = scores.shape[2:4]
     rectangles = []
@@ -72,7 +54,7 @@ if __name__ == '__main__':
         angles_data = geometry[0, 4, y]
 
         for x in range(num_cols):
-            if scores_data[x] < args['min_confidence']:
+            if scores_data[x] < min_confidence:
                 continue
 
             offset_x, offset_y = x * 4.0, y * 4.0
@@ -92,6 +74,35 @@ if __name__ == '__main__':
             rectangles.append((start_x, start_y, end_x, end_y))
             confidences.append(scores_data[x])
 
+    return rectangles, confidences
+
+
+def resize_image(image, width, height):
+
+    h, w = image.shape[:2]
+
+    ratio_w = w / width
+    ratio_h = h / height
+
+    image = cv2.resize(image, (width, height))
+
+    return image, ratio_w, ratio_h
+
+
+def main(image, width, height, detector, min_confidence):
+
+    image = cv2.imread(image)
+    orig_image = image.copy()
+
+    image, ratio_w, ratio_h = resize_image(image, width, height)
+    h, w = image.shape[:2]
+
+    layer_names = ['feature_fusion/Conv_7/Sigmoid',
+                   'feature_fusion/concat_3']
+    scores, geometry = forward_passer(detector, image, layers=layer_names)
+
+    rectangles, confidences = box_extractor(scores, geometry, min_confidence)
+
     boxes = non_max_suppression(np.array(rectangles), probs=confidences)
 
     for (start_x, start_y, end_x, end_y) in boxes:
@@ -104,3 +115,11 @@ if __name__ == '__main__':
 
     cv2.imshow("Detection", orig_image)
     cv2.waitKey(0)
+
+
+if __name__ == '__main__':
+
+    args = get_arguments()
+
+    main(image=args['image'], width=args['width'], height=args['height'],
+         detector=args['east'], min_confidence=args['min_confidence'])
