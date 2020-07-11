@@ -6,44 +6,7 @@ import argparse
 import imutils
 import time
 import cv2
-
-
-def box_extractor(scores, geometry, min_confidence):
-
-    num_rows, num_cols = scores.shape[2:4]
-    rectangles = []
-    confidences = []
-
-    for y in range(num_rows):
-        scores_data = scores[0, 0, y]
-        x_data0 = geometry[0, 0, y]
-        x_data1 = geometry[0, 1, y]
-        x_data2 = geometry[0, 2, y]
-        x_data3 = geometry[0, 3, y]
-        angles_data = geometry[0, 4, y]
-
-        for x in range(num_cols):
-            if scores_data[x] < min_confidence:
-                continue
-
-            offset_x, offset_y = x * 4.0, y * 4.0
-
-            angle = angles_data[x]
-            cos = np.cos(angle)
-            sin = np.sin(angle)
-
-            box_h = x_data0[x] + x_data2[x]
-            box_w = x_data1[x] + x_data3[x]
-
-            end_x = int(offset_x + (cos * x_data1[x]) + (sin * x_data2[x]))
-            end_y = int(offset_y + (cos * x_data2[x]) - (sin * x_data1[x]))
-            start_x = int(end_x - box_w)
-            start_y = int(end_y - box_h)
-
-            rectangles.append((start_x, start_y, end_x, end_y))
-            confidences.append(scores_data[x])
-
-    return rectangles, confidences
+from utils import box_extractor, forward_passer
 
 
 def get_arguments():
@@ -63,33 +26,30 @@ def get_arguments():
     return arguments
 
 
-if __name__ == '__main__':
-
-    args = get_arguments()
-
+def main(video, width, height, detector, min_confidence):
     w, h = None, None
-    new_w, new_h = args['width'], args['height']
+    new_w, new_h = width, height
     ratio_w, ratio_h = None, None
 
     layer_names = ['feature_fusion/Conv_7/Sigmoid', 'feature_fusion/concat_3']
 
     print("[INFO] loading EAST text detector...")
-    net = cv2.dnn.readNet(args["east"])
+    net = cv2.dnn.readNet(detector)
 
-    if not args.get('video', False):
+    if not video:
         print("[INFO] starting video stream...")
         vs = VideoStream(src=0).start()
         time.sleep(1)
 
     else:
-        vs = cv2.VideoCapture(args['video'])
+        vs = cv2.VideoCapture(video)
 
     fps = FPS().start()
 
     while True:
 
         frame = vs.read()
-        frame = frame[1] if args.get('video', False) else frame
+        frame = frame[1] if video else frame
 
         if frame is None:
             break
@@ -104,12 +64,9 @@ if __name__ == '__main__':
 
         frame = cv2.resize(frame, (new_w, new_h))
 
-        blob = cv2.dnn.blobFromImage(frame, 1.0, (new_w, new_h), (123.68, 116.78, 103.94),
-                                     swapRB=True, crop=False)
-        net.setInput(blob)
-        scores, geometry = net.forward(layer_names)
+        scores, geometry = forward_passer(net, frame, layers=layer_names, timing=False)
 
-        rectangles, confidences = box_extractor(scores, geometry, min_confidence=args['min_confidence'])
+        rectangles, confidences = box_extractor(scores, geometry, min_confidence=min_confidence)
         boxes = non_max_suppression(np.array(rectangles), probs=confidences)
 
         for (start_x, start_y, end_x, end_y) in boxes:
@@ -132,10 +89,18 @@ if __name__ == '__main__':
     print(f"[INFO] elapsed time {round(fps.elapsed(), 2)}")
     print(f"[INFO] approx. FPS : {round(fps.fps(), 2)}")
 
-    if not args.get('video', False):
+    if not video:
         vs.stop()
 
     else:
         vs.release()
 
     cv2.destroyAllWindows()
+
+
+if __name__ == '__main__':
+
+    args = get_arguments()
+
+    main(video=args.get('video', False), width=args['width'], height=args['height'],
+         detector=args['east'], min_confidence=args['min_confidence'])
