@@ -6,6 +6,10 @@
 #
 #  Description: Recognizes regions of text in a given video or through the webcam feed
 #
+#  Usage: python video_text_detection.py --east frozen_east_text_detection.pb
+#         or
+#         python video_text_detection.py --east frozen_east_text_detection.pb --video test.avi
+#
 #  Note: Requires opencv 3.4.2 or later
 #        For more in-script documentation, look at video_text_detection_modular.py
 #

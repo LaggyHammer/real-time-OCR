@@ -6,6 +6,8 @@
 #
 #  Description: Recognizes regions of text in a given image
 #
+#  Usage: python text_detection.py --image test.png --east frozen_east_text_detection.pb
+#
 #  Note: Requires opencv 3.4.2 or later
 #
 #  Author: Ankit Saxena (ankch24@gmail.com)

@@ -1,3 +1,18 @@
+# coding: utf-8
+# =====================================================================
+#  Filename:    video_text_detection_modular.py
+#
+#  py Ver:      python 3.6 or later
+#
+#  Description: Recognizes regions of text in a given video or through the webcam feed
+#
+#  Usage: python video_text_detection_modular.py --east frozen_east_text_detection.pb
+#         or
+#         python video_text_detection_modular.py --east frozen_east_text_detection.pb --video test.avi
+#
+#  Author: Ankit Saxena (ankch24@gmail.com)
+# =====================================================================
+
 from imutils.video import VideoStream
 from imutils.video import FPS
 from imutils.object_detection import non_max_suppression

@@ -6,6 +6,10 @@
 #
 #  Description: Recognizes regions of text in a given image
 #
+#  Usage: python text_recognition.py --east frozen_east_text_detection.pb --image test.png
+#         or
+#         python text_recognition.py --east frozen_east_text_detection.pb --image test.png --padding 0.25
+#
 #  Note: Requires opencv 3.4.2 or later
 #        Requires tesseract 4.0 or later
 #
