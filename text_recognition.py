@@ -1,7 +1,4 @@
 import pytesseract
-import argparse
-import cv2
-import numpy as np
 from text_detection import *
 from imutils.object_detection import non_max_suppression
 
@@ -95,6 +92,3 @@ if __name__ == '__main__':
     main(image=args['image'], width=args['width'], height=args['height'],
          detector=args['east'], min_confidence=args['min_confidence'],
          padding=args['padding'])
-
-
-
