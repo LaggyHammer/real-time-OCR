@@ -27,27 +27,35 @@ def get_arguments():
 
 
 def main(video, width, height, detector, min_confidence):
+
+    # initialize the width & height variables
     w, h = None, None
     new_w, new_h = width, height
     ratio_w, ratio_h = None, None
 
+    # layers which provide a text ROI
     layer_names = ['feature_fusion/Conv_7/Sigmoid', 'feature_fusion/concat_3']
 
+    # pre-loading the frozen graph
     print("[INFO] loading EAST text detector...")
     net = cv2.dnn.readNet(detector)
 
     if not video:
+        # start webcam feed
         print("[INFO] starting video stream...")
         vs = VideoStream(src=0).start()
         time.sleep(1)
 
     else:
+        # load video
         vs = cv2.VideoCapture(video)
 
     fps = FPS().start()
 
+    # amin loop
     while True:
 
+        # read frame
         frame = vs.read()
         frame = frame[1] if video else frame
 
@@ -62,13 +70,18 @@ def main(video, width, height, detector, min_confidence):
             ratio_w = w / float(new_w)
             ratio_h = h / float(new_h)
 
+        # resize frame
         frame = cv2.resize(frame, (new_w, new_h))
 
+        # getting results from the model
         scores, geometry = forward_passer(net, frame, layers=layer_names, timing=False)
 
+        # decoding results from the model
         rectangles, confidences = box_extractor(scores, geometry, min_confidence=min_confidence)
+        # applying non-max suppression to get boxes depicting text regions
         boxes = non_max_suppression(np.array(rectangles), probs=confidences)
 
+        # drawing rectangles on the frmae
         for (start_x, start_y, end_x, end_y) in boxes:
             start_x = int(start_x * ratio_w)
             start_y = int(start_y * ratio_h)
@@ -89,6 +102,7 @@ def main(video, width, height, detector, min_confidence):
     print(f"[INFO] elapsed time {round(fps.elapsed(), 2)}")
     print(f"[INFO] approx. FPS : {round(fps.fps(), 2)}")
 
+    # releasing catch points after operation
     if not video:
         vs.stop()
 

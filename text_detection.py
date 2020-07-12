@@ -1,3 +1,16 @@
+# coding: utf-8
+# =====================================================================
+#  Filename:    text_detection.py
+#
+#  py Ver:      python 3.6 or later
+#
+#  Description: Recognizes regions of text in a given image
+#
+#  Note: Requires opencv 3.4.2 or later
+#
+#  Author: Ankit Saxena (ankch24@gmail.com)
+# =====================================================================
+
 from imutils.object_detection import non_max_suppression
 import numpy as np
 import argparse
@@ -23,7 +36,13 @@ def get_arguments():
 
 
 def resize_image(image, width, height):
-
+    """
+    Re-sizes image to given width & height
+    :param image: image to resize
+    :param width: new width
+    :param height: new height
+    :return: modified image, ratio of new & old height and width
+    """
     h, w = image.shape[:2]
 
     ratio_w = w / width
@@ -36,23 +55,31 @@ def resize_image(image, width, height):
 
 def main(image, width, height, detector, min_confidence):
 
+    # reading in image
     image = cv2.imread(image)
     orig_image = image.copy()
 
+    # resizing image
     image, ratio_w, ratio_h = resize_image(image, width, height)
 
+    # layers used for ROI recognition
     layer_names = ['feature_fusion/Conv_7/Sigmoid',
                    'feature_fusion/concat_3']
 
+    # pre-loading the frozen graph
     print("[INFO] loading the detector...")
     net = cv2.dnn.readNet(detector)
 
+    # getting results from the model
     scores, geometry = forward_passer(net, image, layers=layer_names)
 
+    # decoding results from the model
     rectangles, confidences = box_extractor(scores, geometry, min_confidence)
 
+    # applying non-max suppression to get boxes depicting text regions
     boxes = non_max_suppression(np.array(rectangles), probs=confidences)
 
+    # drawing rectangles on the image
     for (start_x, start_y, end_x, end_y) in boxes:
         start_x = int(start_x * ratio_w)
         start_y = int(start_y * ratio_h)

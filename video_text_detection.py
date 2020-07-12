@@ -1,3 +1,17 @@
+# coding: utf-8
+# =====================================================================
+#  Filename:    video_text_detection.py
+#
+#  py Ver:      python 3.6 or later
+#
+#  Description: Recognizes regions of text in a given video or through the webcam feed
+#
+#  Note: Requires opencv 3.4.2 or later
+#        For more in-script documentation, look at video_text_detection_modular.py
+#
+#  Author: Ankit Saxena (ankch24@gmail.com)
+# =====================================================================
+
 from imutils.video import VideoStream
 from imutils.video import FPS
 from imutils.object_detection import non_max_suppression
