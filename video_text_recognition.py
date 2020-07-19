@@ -138,7 +138,7 @@ if __name__ == '__main__':
         boxes = non_max_suppression(np.array(rectangles), probs=confidences)
 
         for (start_x, start_y, end_x, end_y) in boxes:
-            # TODO : Add multiprocessing to increase speed
+
             start_x = int(start_x * ratio_w)
             start_y = int(start_y * ratio_h)
             end_x = int(end_x * ratio_w)
