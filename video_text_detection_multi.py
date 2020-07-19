@@ -6,9 +6,9 @@
 #
 #  Description: Recognizes regions of text in a given video or through the webcam feed
 #
-#  Usage: python video_text_detection.py --east frozen_east_text_detection.pb
+#  Usage: python video_text_recognition_multi.py --east frozen_east_text_detection.pb
 #         or
-#         python video_text_detection.py --east frozen_east_text_detection.pb --video test.avi
+#         python video_text_recognition_multi.py --east frozen_east_text_detection.pb --video test.avi
 #
 #  Note: Requires opencv 3.4.2 or later
 #        For more in-script documentation, look at video_text_detection_modular.py
@@ -101,33 +101,41 @@ if __name__ == '__main__':
 
     args = get_arguments()
 
+    # initialize the width & height variables
     w, h = None, None
     new_w, new_h = args['width'], args['height']
     ratio_w, ratio_h = None, None
 
+    # layers which provide a text ROI
     layer_names = ['feature_fusion/Conv_7/Sigmoid', 'feature_fusion/concat_3']
 
+    # pre-loading the frozen graph
     print("[INFO] loading EAST text detector...")
     net = cv2.dnn.readNet(args["east"])
 
     if not args.get('video', False):
+        # start webcam feed
         print("[INFO] starting video stream...")
         vs = VideoStream(src=0).start()
         time.sleep(1)
 
     else:
+        # load video
         vs = cv2.VideoCapture(args['video'])
 
     fps = FPS().start()
 
+    # main loop
     while True:
 
+        # read frame
         frame = vs.read()
         frame = frame[1] if args.get('video', False) else frame
 
         if frame is None:
             break
 
+        # resize frame
         frame = imutils.resize(frame, width=1000)
         orig = frame.copy()
         orig_h, orig_w = orig.shape[:2]
@@ -139,14 +147,18 @@ if __name__ == '__main__':
 
         frame = cv2.resize(frame, (new_w, new_h))
 
+        # getting results from the model
         blob = cv2.dnn.blobFromImage(frame, 1.0, (new_w, new_h), (123.68, 116.78, 103.94),
                                      swapRB=True, crop=False)
         net.setInput(blob)
         scores, geometry = net.forward(layer_names)
 
+        # decoding results from the model
         rectangles, confidences = box_extractor(scores, geometry, min_confidence=args['min_confidence'])
+        # applying non-max suppression to get boxes depicting text regions
         boxes = non_max_suppression(np.array(rectangles), probs=confidences)
 
+        # collecting roi from the frame
         roi_list = []
         for (start_x, start_y, end_x, end_y) in boxes:
 
@@ -167,6 +179,7 @@ if __name__ == '__main__':
             roi = orig[start_y:end_y, start_x:end_x]
             roi_list.append((roi, (start_x, start_y, end_x, end_y)))
 
+        # recognizing text in roi
         if roi_list:
             # print('creating pool')
             a_pool = multiprocessing.Pool(8)
@@ -176,26 +189,20 @@ if __name__ == '__main__':
             a_pool.close()
             # a_pool.join()
 
+            # draw results & labels
             for text, box in results:
                 start_x, start_y, end_x, end_y = box
                 cv2.rectangle(orig, (start_x, start_y), (end_x, end_y), (0, 255, 0), 2)
                 cv2.putText(orig, text, (start_x, start_y - 20),
                             cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
 
-
-            # # recognizing text
-            # config = '-l eng --oem 1 --psm 7'
-            # text = pytesseract.image_to_string(roi, config=config)
-            #
-            # cv2.rectangle(orig, (start_x, start_y), (end_x, end_y), (0, 255, 0), 2)
-            # cv2.putText(orig, text, (start_x, start_y - 20),
-            #             cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
-
         fps.update()
 
+        # display result
         cv2.imshow("Detection", orig)
         key = cv2.waitKey(1) & 0xFF
 
+        # break if 'q' is pressed
         if key == ord('q'):
             break
 
@@ -203,6 +210,7 @@ if __name__ == '__main__':
     print(f"[INFO] elapsed time {round(fps.elapsed(), 2)}")
     print(f"[INFO] approx. FPS : {round(fps.fps(), 2)}")
 
+    # cleanup
     if not args.get('video', False):
         vs.stop()
 
